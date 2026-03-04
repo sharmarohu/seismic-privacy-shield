@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seismic Privacy Shield</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+body{background:black;color:white;overflow-x:hidden;}
+
+video.bg{
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+object-fit:cover;
+z-index:-1;
+}
+
+.section{display:none;padding:40px 20px;text-align:center;}
+.section.active{display:block;}
+
+button{
+padding:10px 18px;
+margin:8px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-size:15px;
+transition:opacity .3s ease;
+}
+button:disabled{
+opacity:0.5;
+cursor:not-allowed;
+}
+.primary{background:#00e0ff;color:black;}
+.red{background:#b30000;}
+.green{background:#00c853;color:black;}
+
+input{
+padding:10px;
+margin:10px 0;
+width:90%;
+max-width:400px;
+border-radius:6px;
+border:none;
+}
+
+.badge{
+display:inline-block;
+padding:6px 14px;
+border-radius:20px;
+margin-bottom:15px;
+font-weight:bold;
+}
+.badge.green{background:#00c853;color:black;}
+.badge.red{background:#b30000;}
+
+.card{
+background:rgba(0,0,0,0.7);
+padding:20px;
+border-radius:15px;
+margin:20px auto;
+max-width:500px;
+}
+
+/* Glow Ring */
+@keyframes rotateGlow{
+0%{transform:rotate(0deg);}
+100%{transform:rotate(360deg);}
+}
+.glow-ring{
+width:220px;
+height:220px;
+border-radius:50%;
+border:4px solid rgba(255,255,255,0.6);
+position:absolute;
+animation:rotateGlow 2s linear infinite;
+box-shadow:0 0 30px white,0 0 60px white;
+}
+
+.anim-container{
+position:relative;
+width:220px;
+height:220px;
+margin:30px auto;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+/* Comparison */
+.comparison{
+margin-top:30px;
+display:flex;
+flex-wrap:wrap;
+gap:20px;
+justify-content:center;
+}
+.comp-card{
+background:rgba(0,0,0,0.6);
+padding:15px;
+border-radius:12px;
+width:220px;
+}
+
+/* Modal */
+.modal{
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.6);
+backdrop-filter:blur(6px);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:10;
+}
+.modal-box{
+background:#111;
+padding:30px;
+border-radius:15px;
+box-shadow:0 0 25px #00e0ff;
+width:300px;
+text-align:center;
+}
+
+/* Report */
+.report-overlay{
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.6);
+backdrop-filter:blur(8px);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:20;
+}
+.report-card{
+background:#111;
+padding:30px;
+border-radius:20px;
+width:90%;
+max-width:600px;
+text-align:left;
+}
+@keyframes crystalPulse {
+0% {box-shadow:0 0 10px #f3b5d0,0 0 20px #d68fb0;}
+50% {box-shadow:0 0 35px #f3b5d0,0 0 70px #b66b8f;}
+100% {box-shadow:0 0 10px #f3b5d0,0 0 20px #d68fb0;}
+}
+.report-card.seismic{
+animation:crystalPulse 2s infinite ease-in-out;
+}
+</style>
+</head>
+<body>
+
+<video class="bg" autoplay muted loop>
+<source src="assets/bg-video.mp4" type="video/mp4">
+</video>
+
+<audio id="soundStart" src="assets/encryption-start.mp3" preload="auto"></audio>
+<audio id="soundSuccess" src="assets/secure-success.mp3" preload="auto"></audio>
+
+<div id="landing" class="section active">
+<h1>Seismic Privacy Shield</h1>
+<button class="primary" onclick="show('form')">Try Demo</button>
+</div>
+
+<div id="form" class="section">
+<h2>Enter Transaction</h2>
+<input id="from" placeholder="From Wallet">
+<input id="to" placeholder="To Wallet">
+<input id="amount" placeholder="Amount">
+<br>
+<button class="primary" onclick="show('mode')">Continue</button>
+<button onclick="show('landing')">Back</button>
+</div>
+
+<div id="mode" class="section">
+<h2>Select Mode</h2>
+<button class="red" onclick="publicMode()">Public Mode</button>
+<button id="seismicBtn" class="green" onclick="startSeismic()">Seismic Mode</button>
+<button onclick="show('form')">Back</button>
+</div>
+
+<div id="result" class="section"></div>
+
+<!-- Modal -->
+<div id="modal" class="modal">
+<div class="modal-box">
+<h3>Enter Discord Username</h3>
+<input id="discordInput" placeholder="Discord Username">
+<br>
+<button class="primary" onclick="handleModal()">Submit</button>
+<button onclick="closeModal()">Cancel</button>
+<p id="modalMsg" style="margin-top:10px;"></p>
+</div>
+</div>
+
+<!-- Report -->
+<div id="reportOverlay" class="report-overlay">
+<div id="reportContent" class="report-card"></div>
+</div>
+
+<script>
+let currentMode="";
+let discordUser="";
+let animating=false;
+
+function show(id){
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+}
+
+function comparisonHTML(){
+return `
+<div class="comparison">
+<div class="comp-card">
+<h4>Public</h4>
+Wallet Visible<br>
+Amount Visible<br>
+Open Ledger
+</div>
+<div class="comp-card">
+<h4>Seismic</h4>
+Wallet Masked<br>
+Amount Encrypted<br>
+Controlled Access
+</div>
+</div>`;
+}
+
+function publicMode(){
+currentMode="public";
+let f=from.value,t=to.value,a=amount.value;
+
+result.innerHTML=`
+<div class="badge red">Public Mode Active</div>
+<div class="card">
+From: ${f}<br>
+To: ${t}<br>
+Amount: ${a}<br><br>
+<strong>Status: Public</strong>
+</div>
+<button onclick="openModal()">Generate Privacy Report</button>
+<button onclick="show('landing')">Run Another Transaction</button>
+`+comparisonHTML();
+
+show("result");
+}
+
+function startSeismic(){
+if(animating) return;
+animating=true;
+document.getElementById("seismicBtn").disabled=true;
+
+currentMode="seismic";
+show("result");
+
+let startSound=document.getElementById("soundStart");
+startSound.currentTime=0;
+startSound.play();
+
+result.innerHTML=`
+<div class="anim-container">
+<div class="glow-ring"></div>
+<video src="assets/encrypted-animation.mp4" autoplay muted loop width="150"></video>
+</div>
+<h3>Encrypting Transaction...</h3>
+`;
+
+setTimeout(showShield,2000);
+}
+
+function showShield(){
+result.innerHTML=`
+<div class="anim-container">
+<div class="glow-ring"></div>
+<img src="assets/icon-shield.png" width="120">
+</div>
+<h3>Applying Shield Protection...</h3>
+`;
+setTimeout(showBlockchain,1500);
+}
+
+function showBlockchain(){
+result.innerHTML=`
+<div class="anim-container">
+<div class="glow-ring"></div>
+<img src="assets/icon-blockchain.png" width="120">
+</div>
+<h3>Securing on Blockchain...</h3>
+`;
+setTimeout(finalSeismic,1500);
+}
+
+function finalSeismic(){
+result.innerHTML=`
+<div class="badge green">Seismic Mode Active</div>
+<div class="card">
+From: *****<br>
+To: *****<br>
+Amount: *****<br><br>
+<strong>Status: Controlled Access</strong>
+</div>
+<button onclick="openModal()">Generate Privacy Report</button>
+<button onclick="show('landing')">Run Another Transaction</button>
+`+comparisonHTML();
+
+setTimeout(()=>{
+let success=document.getElementById("soundSuccess");
+success.currentTime=0;
+success.play();
+},100);
+
+animating=false;
+document.getElementById("seismicBtn").disabled=false;
+}
+
+function openModal(){
+modal.style.display="flex";
+discordInput.value="";
+modalMsg.innerText="";
+}
+
+function closeModal(){
+modal.style.display="none";
+}
+
+function handleModal(){
+let val=discordInput.value.trim();
+if(val.length<3){
+modalMsg.innerText="Invalid Username";
+return;
+}
+discordUser=val;
+modal.style.display="none";
+generateReport();
+}
+
+function generateReport(){
+let content="";
+if(currentMode==="seismic"){
+reportContent.className="report-card seismic";
+content=`
+<h2>Seismic Privacy Report</h2>
+User: @${discordUser}<br><br>
+Mode: Seismic Wallet<br>
+Visibility: Masked<br>
+Amount: Encrypted<br>
+Access Control: Permission Based<br>
+Security Level: High<br>
+Encryption Status: Active
+`;
+}else{
+reportContent.className="report-card";
+content=`
+<h2>Public Blockchain Report</h2>
+User: @${discordUser}<br><br>
+Mode: Public Wallet<br>
+Visibility: Fully Visible<br>
+Amount: Public<br>
+Access Control: None<br>
+Security Level: Low<br>
+Encryption Status: Inactive
+`;
+}
+
+reportContent.innerHTML=content+`
+<br><br>
+<button onclick="downloadReport()">Download Report</button>
+<button onclick="closeReport()">Close</button>
+`;
+
+reportOverlay.style.display="flex";
+}
+
+function closeReport(){
+reportOverlay.style.display="none";
+}
+
+function downloadReport(){
+html2canvas(reportContent).then(canvas=>{
+let link=document.createElement("a");
+let filename=(currentMode==="seismic"?
+"seismic-privacy-report-"+discordUser:
+"public-privacy-report-"+discordUser)+".png";
+link.download=filename;
+link.href=canvas.toDataURL();
+link.click();
+});
+}
+</script>
+
+</body>
+</html>
